@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cumulative Competency is a Sneak — Carnival Target Booth</title>
+<meta name="description" content="An interactive carnival target booth demonstrating cumulative probability: hit all six targets (80% each) to win." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Baloo+2:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --gold: #ffce3a;
+    --red: #d4232c;
+    --deep-red: #8c1015;
+    --tent-a: #b3222c;
+    --tent-b: #f4e3c1;
+    --green: #2fae5b;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    font-family: 'Baloo 2', sans-serif;
+    background: #241016;
+    color: #2b1210;
+    overflow-x: hidden;
+  }
+
+  .carnival-bg {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 1rem 4rem;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 60%),
+      repeating-linear-gradient(
+        90deg,
+        var(--tent-a) 0px, var(--tent-a) 60px,
+        var(--tent-b) 60px, var(--tent-b) 120px
+      );
+    background-color: var(--tent-a);
+    position: relative;
+  }
+
+  .lights {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 0.5rem;
+    margin-bottom: -0.5rem;
+  }
+
+  .lights span {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 10px 3px rgba(255, 206, 58, 0.85);
+    animation: twinkle 1.4s ease-in-out infinite;
+  }
+
+  .lights span:nth-child(odd) { animation-delay: 0.4s; background: #ff6b6b; box-shadow: 0 0 10px 3px rgba(255,107,107,0.85); }
+  .lights span:nth-child(3n) { animation-delay: 0.8s; background: #57c1ff; box-shadow: 0 0 10px 3px rgba(87,193,255,0.85); }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.75); }
+  }
+
+  .sign {
+    background: linear-gradient(160deg, #fff7e6, #ffe6a8);
+    border: 8px solid var(--deep-red);
+    border-radius: 14px;
+    padding: 1.4rem 2rem 1.6rem;
+    text-align: center;
+    max-width: 720px;
+    width: 100%;
+    box-shadow: 0 10px 0 rgba(0,0,0,0.25), 0 18px 30px rgba(0,0,0,0.35);
+    position: relative;
+    margin-top: 0.5rem;
+  }
+
+  .sign::before, .sign::after {
+    content: "★";
+    position: absolute;
+    top: 10px;
+    color: var(--red);
+    font-size: 1.2rem;
+  }
+  .sign::before { left: 14px; }
+  .sign::after { right: 14px; }
+
+  .sign h1 {
+    font-family: 'Bangers', cursive;
+    letter-spacing: 1.5px;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    color: var(--red);
+    text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,0.15);
+    margin: 0.2rem 0;
+    line-height: 1.1;
+  }
+
+  .sign p.subtitle {
+    font-weight: 700;
+    color: var(--deep-red);
+    font-size: clamp(0.9rem, 2vw, 1.15rem);
+    margin: 0.3rem 0 0;
+  }
+
+  .booth {
+    margin-top: 2.5rem;
+    background: linear-gradient(180deg, #4a2a12, #2f1a0b);
+    border: 6px solid #1c0f05;
+    border-radius: 16px;
+    padding: 2.5rem 1.5rem 1.2rem;
+    max-width: 900px;
+    width: 100%;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 12px 24px rgba(0,0,0,0.4);
+  }
+
+  .targets-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.6rem 1.2rem;
+  }
+
+  .target {
+    position: relative;
+    width: 120px;
+    height: 170px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .target.resolved { cursor: default; }
+
+  .target-face {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: repeating-radial-gradient(
+      circle,
+      #f4e3c1 0px, #f4e3c1 11px,
+      var(--red) 11px, var(--red) 22px,
+      #f4e3c1 22px, #f4e3c1 33px,
+      var(--red) 33px, var(--red) 44px,
+      #17263a 44px, #17263a 55px
+    );
+    border: 4px solid #17263a;
+    box-shadow: 0 6px 10px rgba(0,0,0,0.4);
+    position: relative;
+    z-index: 2;
+    transition: transform 0.15s ease;
+  }
+
+  .stand {
+    width: 18px;
+    height: 46px;
+    background: linear-gradient(90deg, #6b4423, #a56a35, #6b4423);
+    border-radius: 3px;
+    margin-top: -4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+    position: relative;
+    z-index: 1;
+  }
+
+  .result-icon {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.2rem;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .result-icon.show {
+    animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes pop-in {
+    0% { transform: translateX(-50%) scale(0) rotate(-20deg); opacity: 0; }
+    60% { transform: translateX(-50%) scale(1.2) rotate(6deg); opacity: 1; }
+    100% { transform: translateX(-50%) scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  .thumbs-up {
+    background: var(--green);
+    border-radius: 50%;
+    width: 90px;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 4px #ffffff55, 0 6px 14px rgba(0,0,0,0.4);
+  }
+
+  .red-x {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 110px;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .red-x.show {
+    animation: x-in 0.35s ease-out forwards;
+  }
+
+  @keyframes x-in {
+    0% { opacity: 0; transform: translateX(-50%) scale(1.6); }
+    100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  }
+
+  .red-x::before, .red-x::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 90px;
+    height: 14px;
+    background: #e0222b;
+    border: 2px solid #6c0000;
+    border-radius: 6px;
+  }
+  .red-x::before { transform: translate(-50%, -50%) rotate(45deg); }
+  .red-x::after { transform: translate(-50%, -50%) rotate(-45deg); }
+
+  .target-face.knocked {
+    animation: tip-over 0.55s ease-in forwards;
+  }
+
+  @keyframes tip-over {
+    0% { transform: rotate(0deg) translateY(0); opacity: 1; }
+    60% { transform: rotate(80deg) translateY(10px); opacity: 1; }
+    100% { transform: rotate(95deg) translateY(30px); opacity: 0; }
+  }
+
+  .target-face.shake {
+    animation: shake 0.45s ease-in-out;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    20% { transform: translateX(-6px) rotate(-4deg); }
+    40% { transform: translateX(6px) rotate(4deg); }
+    60% { transform: translateX(-5px) rotate(-3deg); }
+    80% { transform: translateX(5px) rotate(3deg); }
+  }
+
+  .confetti-layer {
+    position: absolute;
+    top: 55px;
+    left: 50%;
+    width: 0;
+    height: 0;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .confetto {
+    position: absolute;
+    width: 8px;
+    height: 14px;
+    top: 0;
+    left: 0;
+    opacity: 1;
+    animation: burst 0.75s ease-out forwards;
+  }
+
+  @keyframes burst {
+    to {
+      transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+      opacity: 0;
+    }
+  }
+
+  .footer-note {
+    margin-top: 1.4rem;
+    text-align: center;
+    color: #fff7e6;
+    font-weight: 600;
+    font-size: 1.15rem;
+    background: rgba(28, 12, 8, 0.78);
+    padding: 0.9rem 1.4rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+    max-width: 720px;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 5, 5, 0.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
+  }
+
+  .overlay.visible {
+    display: flex;
+    animation: fade-in 0.3s ease-out;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .overlay-card {
+    background: linear-gradient(160deg, #fff7e6, #ffe6a8);
+    border: 8px solid var(--deep-red);
+    border-radius: 16px;
+    padding: 2rem 1.8rem;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 18px 30px rgba(0,0,0,0.5);
+    animation: pop-card 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes pop-card {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .overlay-card p {
+    font-size: clamp(1.1rem, 3vw, 1.4rem);
+    font-weight: 700;
+    color: var(--deep-red);
+    margin: 0 0 1.4rem;
+    line-height: 1.4;
+  }
+
+  #playAgainBtn {
+    font-family: 'Bangers', cursive;
+    letter-spacing: 1px;
+    font-size: 1.3rem;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0.7rem 1.8rem;
+    cursor: pointer;
+    box-shadow: 0 6px 0 var(--deep-red);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+
+  #playAgainBtn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 var(--deep-red);
+  }
+
+  #playAgainBtn:hover {
+    filter: brightness(1.08);
+  }
+</style>
+</head>
+<body>
+  <div class="carnival-bg">
+    <div class="lights" id="lights"></div>
+
+    <header class="sign">
+      <h1>WIN BIG!! HIT ALL SIX TARGETS TO WIN!</h1>
+      <p class="subtitle">Must hit ALL targets to win!</p>
+    </header>
+
+    <main class="booth">
+      <div class="targets-row" id="targetsRow"></div>
+    </main>
+
+    <p class="footer-note">Each target has an 80% chance of falling when hit.</p>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-card">
+      <p id="overlayMessage"></p>
+      <button id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+
+<script>
+  const HIT_CHANCE = 0.8;
+  const TARGET_COUNT = 6;
+  const CONFETTI_COLORS = ['#ffce3a', '#e0222b', '#57c1ff', '#2fae5b', '#ffffff'];
+
+  const targetsRow = document.getElementById('targetsRow');
+  const overlay = document.getElementById('overlay');
+  const overlayMessage = document.getElementById('overlayMessage');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  const lights = document.getElementById('lights');
+
+  let resolvedCount = 0;
+  let results = [];
+
+  for (let i = 0; i < 14; i++) {
+    const bulb = document.createElement('span');
+    lights.appendChild(bulb);
+  }
+
+  function buildTarget(index) {
+    const target = document.createElement('div');
+    target.className = 'target';
+    target.dataset.index = index;
+
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti-layer';
+
+    const face = document.createElement('div');
+    face.className = 'target-face';
+
+    const resultIcon = document.createElement('div');
+    resultIcon.className = 'result-icon';
+
+    const redX = document.createElement('div');
+    redX.className = 'red-x';
+
+    const stand = document.createElement('div');
+    stand.className = 'stand';
+
+    target.appendChild(confetti);
+    target.appendChild(face);
+    target.appendChild(resultIcon);
+    target.appendChild(redX);
+    target.appendChild(stand);
+
+    target.addEventListener('click', () => handleClick(target, face, resultIcon, redX, confetti));
+
+    return target;
+  }
+
+  function handleClick(target, face, resultIcon, redX, confetti) {
+    if (target.classList.contains('resolved')) return;
+    target.classList.add('resolved');
+
+    const hit = Math.random() < HIT_CHANCE;
+    results.push(hit);
+
+    if (hit) {
+      celebrate(face, resultIcon, confetti);
+    } else {
+      miss(face, redX);
+    }
+
+    resolvedCount++;
+    if (resolvedCount === TARGET_COUNT) {
+      setTimeout(showResult, 800);
+    }
+  }
+
+  function celebrate(face, resultIcon, confetti) {
+    face.classList.add('knocked');
+    spawnConfetti(confetti);
+
+    setTimeout(() => {
+      resultIcon.innerHTML = '<div class="thumbs-up">👍</div>';
+      resultIcon.classList.add('show');
+    }, 350);
+  }
+
+  function miss(face, redX) {
+    face.classList.add('shake');
+    setTimeout(() => {
+      redX.classList.add('show');
+    }, 150);
+  }
+
+  function spawnConfetti(container) {
+    for (let i = 0; i < 16; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetto';
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 50 + Math.random() * 60;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance - 20;
+      const rot = (Math.random() * 720 - 360) + 'deg';
+      piece.style.setProperty('--dx', dx + 'px');
+      piece.style.setProperty('--dy', dy + 'px');
+      piece.style.setProperty('--rot', rot);
+      piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      piece.style.animationDelay = (Math.random() * 0.1) + 's';
+      container.appendChild(piece);
+      setTimeout(() => piece.remove(), 900);
+    }
+  }
+
+  function showResult() {
+    const allHit = results.every(Boolean);
+    overlayMessage.textContent = allHit
+      ? "Yay! You beat the roughly 1:4 odds of success! Play again?"
+      : "Don't feel bad! The odds were 4:1 of not passing! Want to try again?";
+    overlay.classList.add('visible');
+  }
+
+  playAgainBtn.addEventListener('click', () => {
+    location.reload();
+  });
+
+  for (let i = 0; i < TARGET_COUNT; i++) {
+    targetsRow.appendChild(buildTarget(i));
+  }
+</script>
+</body>
+</html>
