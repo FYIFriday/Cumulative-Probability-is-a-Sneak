@@ -246,6 +246,70 @@
   .red-x::before { transform: translate(-50%, -50%) rotate(45deg); }
   .red-x::after { transform: translate(-50%, -50%) rotate(-45deg); }
 
+  .wheel-wrap {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 110px;
+    z-index: 6;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .wheel-wrap.spinning {
+    opacity: 1;
+  }
+
+  .wheel-pointer {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 20px solid var(--gold);
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));
+    z-index: 7;
+    transition: transform 0.15s ease;
+  }
+
+  .wheel-pointer.landed {
+    animation: pointer-pulse 0.5s ease-in-out;
+  }
+
+  @keyframes pointer-pulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.5); }
+  }
+
+  .wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 4px solid #17263a;
+    box-shadow: 0 6px 10px rgba(0,0,0,0.4);
+    background: conic-gradient(var(--green) 0deg 288deg, var(--red) 288deg 360deg);
+    transform: rotate(0deg);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .wheel.spin {
+    transition: transform 2s cubic-bezier(0.22, 0.68, 0.35, 1), box-shadow 0.2s ease;
+  }
+
+  .wheel-wrap.landed-hit .wheel {
+    box-shadow: 0 0 0 6px var(--green), 0 6px 14px rgba(0,0,0,0.5);
+  }
+
+  .wheel-wrap.landed-miss .wheel {
+    box-shadow: 0 0 0 6px var(--red), 0 6px 14px rgba(0,0,0,0.5);
+  }
+
   .target-face.knocked {
     animation: tip-over 0.55s ease-in forwards;
   }
@@ -437,6 +501,15 @@
     const redX = document.createElement('div');
     redX.className = 'red-x';
 
+    const wheelWrap = document.createElement('div');
+    wheelWrap.className = 'wheel-wrap';
+    const wheelPointer = document.createElement('div');
+    wheelPointer.className = 'wheel-pointer';
+    const wheel = document.createElement('div');
+    wheel.className = 'wheel';
+    wheelWrap.appendChild(wheelPointer);
+    wheelWrap.appendChild(wheel);
+
     const stand = document.createElement('div');
     stand.className = 'stand';
 
@@ -444,30 +517,65 @@
     target.appendChild(face);
     target.appendChild(resultIcon);
     target.appendChild(redX);
+    target.appendChild(wheelWrap);
     target.appendChild(stand);
 
-    target.addEventListener('click', () => handleClick(target, face, resultIcon, redX, confetti));
+    target.addEventListener('click', () => handleClick(target, face, resultIcon, redX, confetti, wheelWrap, wheel, wheelPointer));
 
     return target;
   }
 
-  function handleClick(target, face, resultIcon, redX, confetti) {
+  function handleClick(target, face, resultIcon, redX, confetti, wheelWrap, wheel, wheelPointer) {
     if (target.classList.contains('resolved')) return;
     target.classList.add('resolved');
 
     const hit = Math.random() < HIT_CHANCE;
-    results.push(hit);
 
-    if (hit) {
-      celebrate(face, resultIcon, confetti);
-    } else {
-      miss(face, redX);
-    }
+    spinWheel(wheelWrap, wheel, wheelPointer, hit, () => {
+      results.push(hit);
 
-    resolvedCount++;
-    if (resolvedCount === TARGET_COUNT) {
-      setTimeout(showResult, 800);
-    }
+      if (hit) {
+        celebrate(face, resultIcon, confetti);
+      } else {
+        miss(face, redX);
+      }
+
+      resolvedCount++;
+      if (resolvedCount === TARGET_COUNT) {
+        setTimeout(showResult, 800);
+      }
+    });
+  }
+
+  const LANDED_PAUSE = 550;
+
+  function spinWheel(wheelWrap, wheel, wheelPointer, hit, onDone) {
+    wheelWrap.classList.add('spinning');
+
+    // Green slice spans 0deg-288deg (80%), red spans 288deg-360deg (20%).
+    // Pick a landing angle inside the correct slice, with a margin from the edges.
+    const landingAngle = hit
+      ? 10 + Math.random() * 268   // within the green slice
+      : 292 + Math.random() * 56;  // within the red slice
+
+    const extraSpins = 5;
+    const rotation = extraSpins * 360 + ((360 - landingAngle) % 360);
+
+    requestAnimationFrame(() => {
+      wheel.classList.add('spin');
+      wheel.style.transform = `rotate(${rotation}deg)`;
+    });
+
+    setTimeout(() => {
+      // Hold on the landed result — glowing ring + pointer pulse — before the target reacts.
+      wheelWrap.classList.add(hit ? 'landed-hit' : 'landed-miss');
+      wheelPointer.classList.add('landed');
+    }, 2000);
+
+    setTimeout(() => {
+      wheelWrap.classList.remove('spinning');
+      onDone();
+    }, 2000 + LANDED_PAUSE);
   }
 
   function celebrate(face, resultIcon, confetti) {
@@ -508,9 +616,7 @@
 
   function showResult() {
     const allHit = results.every(Boolean);
-    overlayMessage.textContent = allHit
-      ? "Yay! You beat the roughly 1:4 odds of success! Play again?"
-      : "Don't feel bad! The odds were 4:1 of not passing! Want to try again?";
+    overlayMessage.textContent = allHit ? "Winner!" : "You need six hits to win! Try again?"
     overlay.classList.add('visible');
   }
 
