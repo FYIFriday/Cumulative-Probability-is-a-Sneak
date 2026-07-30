@@ -418,6 +418,45 @@
     line-height: 1.4;
   }
 
+  #overlayMessage.win-message {
+    font-family: 'Bangers', cursive;
+    letter-spacing: 1px;
+    font-size: clamp(2rem, 6vw, 3rem);
+    color: var(--green);
+    text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,0.15);
+    animation: message-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes message-bounce {
+    0% { transform: scale(0.4); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+
+  .win-confetti-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    overflow: hidden;
+  }
+
+  .win-confetto {
+    position: absolute;
+    top: -20px;
+    width: 10px;
+    height: 16px;
+    opacity: 0.95;
+    animation: confetti-fall linear forwards;
+  }
+
+  @keyframes confetti-fall {
+    to {
+      transform: translateY(110vh) translateX(var(--drift)) rotate(var(--rot));
+      opacity: 0.85;
+    }
+  }
+
   #playAgainBtn {
     font-family: 'Bangers', cursive;
     letter-spacing: 1px;
@@ -621,7 +660,31 @@
   function showResult() {
     const allHit = results.every(Boolean);
     overlayMessage.textContent = allHit ? "Winner!" : "You need six hits to win! Try again?"
+    overlayMessage.classList.toggle('win-message', allHit);
     overlay.classList.add('visible');
+    if (allHit) {
+      spawnWinConfetti();
+    }
+  }
+
+  function spawnWinConfetti() {
+    const layer = document.createElement('div');
+    layer.className = 'win-confetti-layer';
+    document.body.appendChild(layer);
+
+    for (let i = 0; i < 80; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'win-confetto';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      piece.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+      piece.style.animationDelay = (Math.random() * 0.6) + 's';
+      piece.style.setProperty('--drift', (Math.random() * 200 - 100) + 'px');
+      piece.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+      layer.appendChild(piece);
+    }
+
+    setTimeout(() => layer.remove(), 5000);
   }
 
   playAgainBtn.addEventListener('click', () => {
