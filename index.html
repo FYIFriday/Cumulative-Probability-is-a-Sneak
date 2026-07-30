@@ -478,6 +478,7 @@
 
   let resolvedCount = 0;
   let results = [];
+  let gameEnded = false;
 
   for (let i = 0; i < 14; i++) {
     const bulb = document.createElement('span');
@@ -526,22 +527,25 @@
   }
 
   function handleClick(target, face, resultIcon, redX, confetti, wheelWrap, wheel, wheelPointer) {
-    if (target.classList.contains('resolved')) return;
+    if (gameEnded || target.classList.contains('resolved')) return;
     target.classList.add('resolved');
 
     const hit = Math.random() < HIT_CHANCE;
 
     spinWheel(wheelWrap, wheel, wheelPointer, hit, () => {
+      if (gameEnded) return;
       results.push(hit);
 
       if (hit) {
         celebrate(face, resultIcon, confetti);
+        resolvedCount++;
+        if (resolvedCount === TARGET_COUNT) {
+          gameEnded = true;
+          setTimeout(showResult, 800);
+        }
       } else {
         miss(face, redX);
-      }
-
-      resolvedCount++;
-      if (resolvedCount === TARGET_COUNT) {
+        gameEnded = true;
         setTimeout(showResult, 800);
       }
     });
